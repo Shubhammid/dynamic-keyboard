@@ -31,7 +31,7 @@ const scalingFactor = window.innerWidth <= 500 ? 0.5 : 1;
             texture={5}
           />
           <Keycap position={[0, 1, 2]} rotation={[2, 2, 3]} texture={6} />
-          <Keycap position={[-0.7, 0.6, 2]} rotation={[1, 4, 0]} texture={7} />
+          <Keycap position={[-0.7, 0.9, 2]} rotation={[1, 4, 0]} texture={7} />
           <Keycap
             position={[-0.77, 0.1, 2.8]}
             rotation={[3, 2, 3]}
