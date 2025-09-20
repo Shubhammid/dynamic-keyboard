@@ -24,7 +24,7 @@ const Hero: FC<HeroProps> = ({ slice }) => {
       className="blue-gradient-bg relative h-dvh text-white text-shadow-black/30 text-shadow-lg"
     >
       <div className="hero-scene pointer-events-none sticky top-0 h-dvh w-full">
-        <Canvas>
+        <Canvas shadows='soft'>
           <Scene />
         </Canvas>
       </div>
