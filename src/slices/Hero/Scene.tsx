@@ -72,10 +72,10 @@ function CameraController() {
   return null;
 }
 
-
-
 export function Scene() {
   const keyboardGroupRef = useRef<THREE.Group>(null);
+  const keycapRef = useRef<THREE.Group>(null);
+  const keyboardAnimationRef = useRef<KeyboardRefs>(null);
   const [lightIntensityScaler, setLightIntensityScaler] = useState(0);
 
   const scalingFactor = window.innerWidth <= 500 ? 0.5 : 1;
@@ -105,6 +105,13 @@ export function Scene() {
         ease: "power2.inOut",
       });
 
+      if (typeof window !== "undefined") {
+        const initialScrollY = window.scrollY;
+        if (initialScrollY === 0) {
+          document.body.style.overflow = "hidden";
+        }
+      }
+
       tl.to(keyboard.position, {
         x: 0,
         y: -0.5,
@@ -127,7 +134,7 @@ export function Scene() {
           y: -0.5,
           z: 1.9,
           duration: 2,
-          delay: .5,
+          delay: 0.5,
         })
         .to(
           keyboard.rotation,
@@ -138,7 +145,209 @@ export function Scene() {
             duration: 2,
           },
           "<",
-        );
+        )
+        .call(() => {
+          if (typeof window !== "undefined") {
+            document.body.style.overflow = "";
+          }
+
+          const keycaps = keycapRef.current;
+
+          if (!keyboard || !keycaps) return;
+
+          const scrollTimeline = gsap.timeline({
+            scrollTrigger: {
+              trigger: ".hero",
+              start: "top top",
+              end: "bottom bottom",
+              scrub: 1,
+            },
+          });
+
+          scrollTimeline
+            .to(keyboard.position, {
+              x: 0,
+              y: -0.5,
+              z: 2.2,
+            })
+            .to(
+              keyboard.rotation,
+              {
+                x: Math.PI * -2 + 0.8,
+                y: 0,
+                z: 0,
+              },
+              "<",
+            )
+            .to(
+              keycaps.scale,
+              {
+                x: 5,
+                y: 5,
+                z: 5,
+                duration: 3,
+              },
+              "0",
+            );
+
+          if (keyboardAnimationRef.current) {
+            const switchRefs = keyboardAnimationRef.current.switches;
+            const individualKeys = keyboardAnimationRef.current.keys;
+
+            const allSwitches: THREE.Object3D[] = [];
+
+            [
+              switchRefs.functionRow.current,
+              switchRefs.numberRow.current,
+              switchRefs.topRow.current,
+              switchRefs.homeRow.current,
+              switchRefs.bottomRow.current,
+              switchRefs.modifiers.current,
+              switchRefs.arrows.current,
+            ].forEach((row) => {
+              if (row) {
+                allSwitches.push(...Array.from(row.children));
+              }
+            });
+
+            const keyboardColumns = [
+              ["esc", "grave", "tab", "caps", "lshift", "lcontrol"],
+              ["f1", "one", "q", "a", "z", "lalt"],
+              ["f2", "two", "w", "s", "x", "lwin"],
+              ["f3", "three", "e", "d", "c"],
+              ["f4", "four", "r", "f", "v"],
+              ["f5", "five", "t", "g", "b", "space"],
+              ["f6", "six", "y", "h", "n"],
+              ["f7", "seven", "u", "j", "m"],
+              ["f8", "eight", "i", "k", "comma"],
+              ["f9", "nine", "o", "l", "period"],
+              ["f10", "zero", "dash", "p", "semicolon", "slash", "ralt"],
+              [
+                "f11",
+                "lsquarebracket",
+                "quote",
+                "rshift",
+                "fn",
+                "arrowleft",
+                "rsquarebracket",
+                "enter",
+                "f12",
+                "equal",
+                "arrowup",
+              ],
+              [],
+              [
+                "del",
+                "backspace",
+                "backslash",
+                "pagedown",
+                "end",
+                "arrowdown",
+                "pageup",
+                "arrowright",
+              ],
+              [],
+            ];
+
+            const keyCapsByColumn: THREE.Mesh[][] = [];
+            const switchesByColumn: THREE.Object3D[][] = [];
+
+            const sortedSwitches = allSwitches.sort(
+              (a, b) => a.position.x - b.position.x,
+            );
+
+            keyboardColumns.forEach((column, columnIndex) => {
+              const columnKeycaps: THREE.Mesh[] = [];
+              const columnSwitches: THREE.Object3D[] = [];
+
+              column.forEach((keyName) => {
+                if (keyName && individualKeys[keyName]?.current) {
+                  columnKeycaps.push(individualKeys[keyName].current);
+                }
+              });
+
+              const switchesPerColumn = Math.ceil(
+                sortedSwitches.length / keyboardColumns.length,
+              );
+              const startIndex = columnIndex * switchesPerColumn;
+              const endIndex = Math.min(
+                startIndex + switchesPerColumn,
+                sortedSwitches.length,
+              );
+
+              for (let i = startIndex; i < endIndex; i++) {
+                if (sortedSwitches[i]) {
+                  columnSwitches.push(sortedSwitches[i]);
+                }
+              }
+
+              keyCapsByColumn.push(columnKeycaps);
+              switchesByColumn.push(columnSwitches);
+            });
+
+            keyCapsByColumn.forEach((columnKeycaps, columnIndex) => {
+              const columnSwitches = switchesByColumn[columnIndex];
+
+              if (columnKeycaps.length === 0 && columnSwitches.length === 0)
+                return;
+
+              const waveProgress = columnIndex / (keyboardColumns.length - 1);
+              const waveStartTime = waveProgress * 2 + 0.5;
+
+              if (columnKeycaps.length > 0) {
+                const keycapPositions = columnKeycaps.map(
+                  (keycap) => keycap.position,
+                );
+
+                scrollTimeline.to(
+                  keycapPositions,
+                  {
+                    y: "+=0.08",
+                    duration: 0.5,
+                    ease: "power2.inOut",
+                  },
+                  waveStartTime,
+                );
+
+                scrollTimeline.to(
+                  keycapPositions,
+                  {
+                    y: "-=0.08",
+                    duration: 0.5,
+                    ease: "power2.inOut",
+                  },
+                  waveStartTime + 0.5,
+                );
+              }
+
+              if (columnSwitches.length > 0) {
+                const switchPositions = columnSwitches.map(
+                  (switchObj) => switchObj.position,
+                );
+
+                scrollTimeline.to(
+                  switchPositions,
+                  {
+                    y: "+=0.04",
+                    duration: 0.3,
+                    ease: "power2.inOut",
+                  },
+                  waveStartTime + 0.2,
+                );
+
+                scrollTimeline.to(
+                  switchPositions,
+                  {
+                    y: "-=0.04",
+                    duration: 0.3,
+                    ease: "power2.inOut",
+                  },
+                  waveStartTime + 0.5,
+                );
+              }
+            });
+          }
+        });
     });
   });
 
@@ -149,10 +358,10 @@ export function Scene() {
 
       <group scale={scalingFactor}>
         <group ref={keyboardGroupRef}>
-          <Keyboard scale={9} />
+          <Keyboard scale={9} ref={keyboardAnimationRef} />
         </group>
 
-        <group>
+        <group ref={keycapRef}>
           <Keycap position={[0, -0.4, 2.6]} rotation={[0, 2, 3]} texture={0} />
           <Keycap position={[-1.4, 0, 2.3]} rotation={[3, 2, 1]} texture={1} />
           <Keycap position={[-1.8, 1, 1.5]} rotation={[0, 1, 3]} texture={2} />
